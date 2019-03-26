@@ -1,0 +1,61 @@
+# 爬取"http://app.finance.china.com.cn/stock/list.php?type=a&page="中股票列表信息，打印，并存储为本地txt文件。
+
+
+from bs4 import BeautifulSoup
+import requests
+
+
+def getHTMLText(url):
+    try:
+        r = requests.get(url, timeout=30, headers={'User-Agent': 'Mozilla/5.0 \(Windows NT 10.0; Win64; x64) \
+AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.67 Safari/537.36'})
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding
+        return r.text
+    except:
+        print('None received')
+
+
+def getStockList(lst, base_url, depth):
+    for i in range(depth):
+        try:
+            url = base_url + str(i+1)
+            html = getHTMLText(url)
+            soup = BeautifulSoup(html, "html.parser")
+            tags = soup.find_all('tr')
+            for tag in tags[1:]:
+                ta = tag.find_all('td')
+                list = [ta[0].string, ta[1].string, ta[2].string, ta[3].string, ta[4].string,ta[5].string,\
+                        ta[6].string, ta[7].string,ta[8].string, ta[9].string, ta[10].string]
+                lst.append(list)
+        except:
+            continue
+
+
+def printStockList(lst):
+    tlpt = "{:^5}\t{:^10}\t{:^10}\t{:^10}\t{:^10}\t{:^10}\t{:^10}\t \
+    {:^10}\t{:^10}\t{:^10}\t{:^10}\t{:^10}"
+    print(tlpt.format("序号", "代码", "名称", "最新价", "涨跌幅↓", "涨跌额", "成交量", "成交额", "今开盘", "昨收盘", "最低价", "最高价"))
+    count = 1
+    for li in lst:
+        print(tlpt.format(count, li[0], li[1], li[2], li[3], li[4], li[5], li[6], li[7], li[8], li[9], li[10]))
+        count += 1
+
+
+def main():
+    stock_list_url = r"http://app.finance.china.com.cn/stock/list.php?type=a&page="
+    slist = []
+    depth = 3
+    getStockList(slist, stock_list_url, depth)
+    printStockList(slist)
+    with open(r'D:\txt\stock.txt', 'w+') as foo:
+        for line in slist:
+            foo.write('\n')
+            for lin in line:
+                foo.write(lin)
+                foo.write(',')
+                foo.write('\t')
+
+
+main()
+
