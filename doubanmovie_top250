@@ -1,0 +1,113 @@
+import re
+import requests
+import time
+from requests import RequestException
+import random
+
+
+def get_urllist(url):
+    try:
+        r = requests.get(url, timeout=30, headers={'User-Agent': 'Mozilla/5.0 \(Windows NT 10.0; Win64; x64) \
+                            AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.67 Safari/537.36'})
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding
+        pattern = re.compile('<li>.*?<div class="hd">.*?href="(.*?)" class="">.*?</li>', re.S)
+        list = re.findall(pattern, r.text)
+        return list
+    except RequestException:
+        print('list downloading is failure')
+        pass
+
+
+def get_html(url):
+    try:
+        r = requests.get(url, timeout=30, headers={'User-Agent': 'Mozilla/5.0 \(Windows NT 10.0; Win64; x64) \
+                            AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.67 Safari/537.36'})
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding
+        return r.text
+    except RequestException:
+        print('nohtml is found')
+        pass
+
+
+def get_movie_list(url_list):
+    for li in url_list:
+        print(li)
+        html = get_html(li)
+        t = random.random()
+        time.sleep(t)
+
+        pattern = re.compile('<span class="top250-no">No.(.*?)</span>', re.S)
+        rank = re.findall(pattern, html)
+        print(rank)
+
+        pattern = re.compile('<span property="v:itemreviewed">(.*?)</span>', re.S)
+        name = re.findall(pattern, html)
+        print(name)
+
+        pattern = re.compile('rel="v:directedBy">(.*?)</a></span></span>', re.S)
+        director = re.findall(pattern, html)
+        print(director)
+
+        pattern = re.compile("<span ><span class='pl'>编剧</span>: <span class='attrs'>(.*?)</span></span><br/>", re.S)
+        author = re.findall(pattern, html)
+        if author:
+            pattern = re.compile('<a.*?>(.*?)</a>', re.S)
+            author = re.findall(pattern, author[0])
+        print(author)
+
+        pattern = re.compile('<a href=".*?" rel="v:starring">(.*?)</a>', re.S)
+        actor = re.findall(pattern, html)
+        print(actor)
+
+        pattern = re.compile('<span class="pl">制片国家/地区:</span>(.*?)<br/>', re.S)
+        area = re.findall(pattern, html)
+        print(area)
+
+        pattern = re.compile('<span class="pl">语言:</span>(.*?)<br/>', re.S)
+        language = re.findall(pattern, html)
+        print(language)
+
+        pattern = re.compile('<span property="v:initialReleaseDate" content=".*?">(.*?)</span>', re.S)
+        releasedate = re.findall(pattern, html)
+        print(releasedate)
+
+        pattern = re.compile('<span property="v:runtime" content=".*?">(.*?)</span>', re.S)
+        runtime = re.findall(pattern, html)
+        print(runtime)
+
+        pattern = re.compile('<strong class="ll rating_num" property="v:average">(.*?)</strong>', re.S)
+        score = re.findall(pattern, html)
+        print(score)
+
+        pattern = re.compile('<span class="all hidden">(.*?)</span>', re.S)
+        introduce = re.findall(pattern, html)
+        if not introduce:
+            pattern = re.compile('<span property="v:summary" class="">(.*?)</span>', re.S)
+            introduce = re.findall(pattern, html)
+        introduce = introduce[0].strip().replace('\n', '').replace('\t', '').replace(
+            '                                    <br />                                　　', '')
+        print(introduce)
+
+        with open('top250movie1.txt', 'a', encoding='utf-8') as fo:
+            fo.write(str(rank) + '\t' + str(name) + '\t' + str(director) + '\t' + str(author) + '\t' + str(actor) + \
+                     '\t' + str(area) + '\t' + str(language) + '\t' + str(releasedate) + '\t' + str(runtime) + '\t' + \
+                     str(score) + '\t' + str(introduce) + '\n')
+
+
+if __name__ == "__main__":
+
+    start_url = 'https://movie.douban.com/top250?start='
+    url_list = []
+
+    for i in range(10):
+        url = start_url + str(i*25)
+        lists = get_urllist(url)
+        for li in lists:
+            url_list.append(li)
+        t = random.random()
+        time.sleep(t)
+
+    get_movie_list(url_list)
+
