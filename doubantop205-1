@@ -1,0 +1,102 @@
+import random
+import time
+
+import requests
+from requests.exceptions import ReadTimeout, ConnectionError, RequestException
+from bs4 import BeautifulSoup
+import re
+
+
+def get_html(url, headers, data):
+    try:
+        res = requests.get(url, timeout=30, headers=headers, params=data)
+        res.status_code
+        res.encoding = res.apparent_encoding
+        return res.text
+    except ReadTimeout as e:
+        print("请求超时")
+    except ConnectionError as e:
+        print("连接失败")
+    except RequestException as e:
+        print("请求失败")
+
+
+def get_html_list(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    tag_list = soup.select('ol div .hd a')
+    html_list = []
+    for item in tag_list:
+        html_list.append(item.get("href"))
+    return html_list
+
+
+def get_text(html, os_path):
+    try:
+        one_movie = []
+        soup = BeautifulSoup(html, 'html.parser')
+        rank = soup.find(name='span', attrs={'class': 'top250-no'}).get_text()
+        name = soup.find(name='span', attrs={'property': 'v:itemreviewed'}).get_text()
+        director = soup.find(name='span', text='导演').parent.get_text()
+        writer = soup.find(name='span', text='编剧').parent.get_text()
+        actor = soup.find(name='span', text='主演').parent.get_text()
+        genre_list = soup.find_all(name='span', attrs={'property': 'v:genre'})
+        genre = []
+        for li in genre_list:
+            genre.append(li.get_text())
+        pattern = re.compile('<span class="pl">制片国家/地区:</span>(.*?)<br/>', re.S)
+        country = re.findall(pattern, html)
+        date_list = soup.find_all(name='span', attrs={'property': 'v:initialReleaseDate'})
+        initial_date = []
+        for li in date_list:
+            initial_date.append(li.get_text())
+        score = soup.find(name='strong', attrs={'class': 'll rating_num'}).get_text()
+        summary = soup.find(name='span', attrs={'property': 'v:summary'}).get_text()
+        summary = summary.strip().replace('\n', '').replace('\t', '').replace(
+            '                                    <br />                                　　', '')
+        one_movie.append(rank)
+        one_movie.append(name)
+        one_movie.append(director)
+        one_movie.append(writer)
+        one_movie.append(actor)
+        one_movie.append(country)
+        one_movie.append(initial_date)
+        one_movie.append(score)
+        one_movie.append(summary)
+        with open(os_path, 'a', encoding='utf-8') as fo:
+            fo.write(one_movie[0] + '\t' + one_movie[1] + '\t' + one_movie[2] + '\t' +  one_movie[3] + '\t'\
+                     + one_movie[4] + '\t' + str(one_movie[5]) + '\t' + str(one_movie[6]) + '\t' \
+                     + one_movie[7] + '\t' + one_movie[8] + '\n')
+        return 1
+    except Exception as e:
+        pass
+
+
+if __name__ == '__main__':
+    start_url = 'https://movie.douban.com/top250?start='
+    headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
+            AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.67 Safari/537.36'}
+    data = {'name': 17767070888, 'password': 10023100}
+    os_path = r'C:\Users\41570\PycharmProjects\numpy\top250movie0429.txt'
+    html_list = []
+    for i in range(10):
+        url = start_url + str(i*25)
+        print(url)
+        html = get_html(url, headers, data)
+        html_list.extend(get_html_list(html))
+        sec = random.random()
+        time.sleep(sec)
+    print('一共爬取{}个网页链接'.format(len(html_list)))
+    sum = len(html_list)
+    count = 0
+    start = time.perf_counter()
+    for li in html_list:
+        html = get_html(li, headers, data)
+        j = get_text(html, os_path)
+        if j == 1:
+            count += 1
+        sec = random.random()
+        time.sleep(sec)
+        dur = time.perf_counter() - start
+        print('\r{:^3.0f}%[{}->{}]{:.2f}s'.format(100*count/sum, '*'*int(count/2), \
+                                                  '.'*int((sum-count)/2), dur), end='')
+    print('\n一共爬取了{}部电影的资料'.format(count))
